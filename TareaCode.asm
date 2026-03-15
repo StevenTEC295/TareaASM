@@ -29,9 +29,9 @@
                   DB ?
                   DB 30 DUP(?)
     
-    buffer_saldo  DB 7
+    buffer_saldo  DB 5
                   DB ?
-                  DB 7 DUP(?)
+                  DB 5 DUP(?)
                   
     ; Mensajes para crear cuenta
     msg_pedir_numero DB 13,10,'Ingrese numero de cuenta: $'
@@ -59,8 +59,22 @@
     mensaje_crear_cuenta db 13, 10, 'Crear cuenta, en desarrollo...'
     msg_cuenta_existe DB 13,10,'ERROR: El numero de cuenta ya existe!',13,10,'$'               
     salto_linea db 13,10,'$' 
+    
+        
+    msg_pedir_monto      DB 13,10,'Ingrese monto a depositar: $'
+    msg_cuenta_inactiva  DB 13,10,'ERROR: La cuenta esta INACTIVA. No se puede depositar.',13,10,'$'
+    msg_cuenta_no_existe DB 13,10,'ERROR: La cuenta no existe.',13,10,'$'
+    msg_monto_invalido   DB 13,10,'ERROR: Monto invalido. Debe ser mayor a 0.',13,10,'$'
+    msg_deposito_exitoso DB 13,10,'*** DEPOSITO EXITOSO ***',13,10,'$'
+    msg_saldo_actual     DB 'Nuevo saldo: $'
 
-.CODE
+
+
+
+
+
+.CODE                                                                             
+
 
 Main proc
     mov ax, @DATA
@@ -158,7 +172,7 @@ switch proc
     cmp opcion, 1
     je crear_cuenta
     cmp opcion, 2
-    je opcion_depositar
+    je depositar
     cmp opcion, 3
     je opcion_retirar
     cmp opcion, 4
@@ -170,46 +184,6 @@ switch proc
     cmp opcion, 7
     je salir_programa
     
-    ret
-    
-opcion_depositar:
-    ; Aquí irá la función para depositar
-    lea dx, mensaje_crear_cuenta
-    mov ah, 09h
-    int 21h
-    call esperar_tecla
-    ret
-    
-opcion_retirar:
-    ; Aquí irá la función para retirar
-    lea dx, mensaje_crear_cuenta
-    mov ah, 09h
-    int 21h
-    call esperar_tecla
-    ret
-    
-opcion_consultar:
-    ; Aquí irá la función para consultar
-    lea dx, mensaje_crear_cuenta
-    mov ah, 09h
-    int 21h
-    call esperar_tecla
-    ret
-    
-opcion_reporte:
-    ; Aquí irá la función para reporte
-    lea dx, mensaje_crear_cuenta
-    mov ah, 09h
-    int 21h
-    call esperar_tecla
-    ret
-    
-opcion_desactivar:
-    ; Aquí irá la función para desactivar
-    lea dx, mensaje_crear_cuenta
-    mov ah, 09h
-    int 21h
-    call esperar_tecla
     ret
     
 salir_programa:
@@ -311,13 +285,6 @@ numeros_iguales:
     POP SI
     POP CX
     
-    ; Mostrar mensaje de error
-    PUSH DX
-    MOV AH, 09h
-    LEA DX, msg_cuenta_existe
-    INT 21h
-    POP DX
-    
     ; Configurar ZF = 1 (existe)
     CMP AX, AX                   ; Esto pone ZF = 1
     JMP fin_validacion
@@ -349,6 +316,277 @@ buffer_terminado:
     MOV BYTE PTR [DI], 0        ; Poner terminador explicitamente
     ; Continuar comparacion con el nuevo terminador
     JMP comparar_numeros
+
+;Funcion: Depositar dinero
+
+depositar proc
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    
+verificar_existe:
+    ; Pedir numero primero para validar
+    MOV AH, 09h
+    LEA DX, msg_pedir_numero
+    INT 21h
+    
+    lea dx, buffer_numero
+    mov ah, 0Ah
+    int 21h
+    
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+              
+    ; Validar si el numero ya existe
+    CALL validar_cuenta_existe
+    JZ cuenta_encontrada
+    JMP cuenta_no_existe
+    
+cuenta_encontrada:
+    ; La cuenta existe - ahora hay que localizarla en el array
+    CALL localizar_cuenta_por_numero   ; Devuelve SI = direccion de la cuenta
+    
+    ; Verificar que la cuenta esta ACTIVA
+    PUSH SI
+    ADD SI, MAX_NUMERO + MAX_NOMBRE + 2   ; SI apunta al campo estado
+    MOV AL, [SI]
+    POP SI
+    CMP AL, ESTADO_ACTIVA
+    JE cuenta_activa
+    
+    ; Si la cuenta está INACTIVA
+    MOV AH, 09h
+    LEA DX, msg_cuenta_inactiva
+    INT 21h
+    call esperar_tecla
+    JMP fin_depositar
+    
+cuenta_activa:
+    ; Pedir cantidad a depositar
+    MOV AH, 09h
+    LEA DX, msg_pedir_monto
+    INT 21h
+    
+    lea dx, buffer_saldo
+    mov ah, 0Ah
+    int 21h
+    
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+    
+    ; Convertir el monto ingresado a numero (AX)
+    CALL convertir_monto
+    
+    ; Verificar que el monto sea positivo
+    CMP AX, 0
+    JLE monto_invalido
+    
+    ; Localizar el campo saldo de la cuenta
+    PUSH SI
+    ADD SI, MAX_NUMERO + MAX_NOMBRE   ; SI apunta al campo saldo
+    MOV BX, [SI]                      ; BX = saldo actual
+    
+    ; Sumar el monto al saldo actual
+    ADD BX, AX
+    MOV [SI], BX                       ; Guardar nuevo saldo
+    POP SI
+    
+    ; Mostrar mensaje de Exito
+    MOV AH, 09h
+    LEA DX, msg_deposito_exitoso
+    INT 21h
+    
+    ; Mostrar el nuevo saldo
+    MOV AH, 09h
+    LEA DX, msg_saldo_actual
+    INT 21h
+    
+    MOV AX, BX
+    CALL mostrar_numero 
+    
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+
+    call esperar_tecla
+    JMP fin_depositar
+    
+cuenta_no_existe:
+    MOV AH, 09h
+    LEA DX, msg_cuenta_no_existe
+    INT 21h
+    call esperar_tecla
+    JMP fin_depositar
+    
+monto_invalido:
+    MOV AH, 09h
+    LEA DX, msg_monto_invalido
+    INT 21h
+    call esperar_tecla
+    
+fin_depositar:
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+depositar endp
+
+
+; Funcion: Localizar cuenta por numero
+; ENTRADA: buffer_numero con el numero buscado
+; SALIDA:  SI = direccion de la cuenta en cuentas_array
+
+localizar_cuenta_por_numero PROC
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+    
+    LEA SI, cuentas_array
+    MOV CX, num_cuentas
+    
+buscar_localizar:
+    PUSH CX
+    PUSH SI
+    
+    ; Comparar numeros
+    LEA DI, buffer_numero+2
+    MOV CX, MAX_NUMERO-1
+    
+comparar_localizar:
+    MOV AL, [SI]
+    MOV BL, [DI]
+    CMP AL, BL
+    JNE siguiente_localizar
+    
+    CMP AL, 0
+    JE encontrado_localizar
+    
+    INC SI
+    INC DI
+    LOOP comparar_localizar
+    
+    ; Verificar ultimo caracter
+    MOV AL, [SI]
+    MOV BL, [DI]
+    CMP AL, BL
+    JNE siguiente_localizar
+    CMP AL, 0
+    JNE siguiente_localizar
+    
+encontrado_localizar:
+    POP SI           ; Recuperamos SI original (direccion de la cuenta)
+    POP CX
+    JMP fin_localizar
+    
+siguiente_localizar:
+    POP SI
+    POP CX
+    ADD SI, REGISTRO_SIZE
+    LOOP buscar_localizar
+    
+    ; Si no encuentra (no deberia pasar porque ya validamos)
+    XOR SI, SI
+    
+fin_localizar:
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    RET
+localizar_cuenta_por_numero ENDP
+
+
+; Funcion: Convertir monto ingresado a numero
+; ENTRADA: buffer_saldo con el monto
+; SALIDA:  AX = numero convertido
+
+convertir_monto PROC
+    push bx
+    push cx
+    push dx
+    push si
+    
+    LEA SI, buffer_saldo+2
+    XOR AX, AX
+    XOR BX, BX
+    MOV CL, buffer_saldo+1
+    XOR CH, CH
+    
+    CMP CX, 0
+    JE fin_conversion
+    
+convertir_monto_loop:
+    MOV BL, [SI]
+    CMP BL, '0'
+    JB fin_conversion
+    CMP BL, '9'
+    JA fin_conversion
+    
+    SUB BL, '0'
+    MOV DX, 10
+    MUL DX
+    ADD AX, BX
+    INC SI
+    LOOP convertir_monto_loop
+    
+fin_conversion:
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    RET
+convertir_monto ENDP
+
+
+; Funcion: Mostrar numero en AX
+
+mostrar_numero PROC
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    MOV BX, 10
+    XOR CX, CX
+    
+convertir_mostrar:
+    XOR DX, DX
+    DIV BX
+    PUSH DX
+    INC CX
+    OR AX, AX
+    JNZ convertir_mostrar
+    
+mostrar_digitos_loop:
+    POP DX
+    ADD DL, '0'
+    MOV AH, 02h
+    INT 21h
+    LOOP mostrar_digitos_loop
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    RET
+mostrar_numero ENDP
+     
+    
+
+
+
+
 
 
 ; Funcion: Crear cuenta con validacion
@@ -388,6 +626,8 @@ verificar_duplicado:
     
 cuenta_duplicada:
     ; La cuenta ya existe - mostrar error y salir
+    mov ah, 09h
+    lea dx, msg_cuenta_existe
     call esperar_tecla
     RET
     
