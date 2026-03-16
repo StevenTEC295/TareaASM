@@ -71,6 +71,9 @@
     msg_activada_ok     db 13,10,'*** CUENTA ACTIVADA EXITOSAMENTE ***',13,10,'$'
     msg_ya_activa       db 13,10,'ERROR: La cuenta ya se encuentra activa.',13,10,'$'
     ; Mensajes para consultar saldo, retirar dinero, reporte general y desactivar cuenta.
+    msg_retirar_monto   db 13,10,'Ingrese monto a retirar: $'  
+    msg_retiro_exitoso  db 13,10,'*** RETIRO EXITOSO ***',13,10,'$'
+    msg_monto_insuficiente  db 13,10,'NO VALIDO: Los fondos que desea retirar no son suficientes',13,10,'$'
     msg_desactivada_ok  db 13,10,'*** CUENTA DESACTIVADA EXITOSAMENTE ***',13,10,'$'
     msg_ya_inactiva     db 13,10,'ERROR: La cuenta ya se encuentra inactiva.',13,10,'$'
     msg_nombre_titular  db 13,10,'Titular: $'
@@ -336,8 +339,11 @@ buffer_terminado:
     MOV BYTE PTR [DI], 0        ; Poner terminador explicitamente
     ; Continuar comparacion con el nuevo terminador
     JMP comparar_numeros
-
+ 
+ 
+;================================================
 ;Funcion: Depositar dinero
+;================================================
 
 depositar proc
     push ax
@@ -602,14 +608,12 @@ mostrar_digitos_loop:
     RET
 mostrar_numero ENDP
      
-    
+   
 
-
-
-
-
-
+;================================================
 ; Funcion: Crear cuenta con validacion
+;================================================
+
 
 crear_cuenta proc   
     ; Verificar espacio
@@ -730,6 +734,161 @@ copiar_nom:
     RET
 copiar_nombre ENDP
 
+
+;================================================
+;Funcion: Retirar saldo
+;================================================
+
+opcion_retirar proc
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    
+    ;Pedir numero de cuenta 
+    mov ah, 09h
+    lea dx, msg_pedir_numero
+    int 21h
+
+    lea dx, buffer_numero
+    mov ah, 0Ah
+    int 21h
+
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+
+    ;Validar si existe 
+    call validar_cuenta_existe
+    jz retiro      ; Si ZF=1, la cuenta existe, saltamos a consultar
+    
+    ; Si no existe, imprimimos error y salimos
+    mov ah, 09h
+    lea dx, msg_cuenta_no_existe
+    int 21h
+    call esperar_tecla 
+    ;ret
+    jmp fin_retirar
+    
+retiro: 
+
+    ;Obtener el puntero a la cuenta (SI)    
+    call localizar_cuenta_por_numero
+    
+    ; Verificar que la cuenta esta ACTIVA
+    push si
+    add si, MAX_NUMERO + MAX_NOMBRE + 2   ; SI apunta al campo estado
+    mov al, [si]
+    pop si
+    cmp al, ESTADO_ACTIVA
+    je cuenta_activa_retirar
+    
+    ; Si la cuenta esta INACTIVA
+    mov ah, 09h
+    lea dx, msg_cuenta_inactiva
+    int 21h
+    call esperar_tecla
+    jmp fin_retirar
+    
+cuenta_activa_retirar:
+    
+    ;Imprimir etiqueta de saldo a retirar
+    mov ah, 09h
+    lea dx, msg_retirar_monto
+    int 21h 
+    
+    lea dx, buffer_saldo
+    mov ah, 0Ah
+    int 21h
+    
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+    
+    ; Convertir monto ingresado en numero (ax)
+    call convertir_monto
+    
+     
+    ;Tomar saldo actual y convertirlo en numero (cx)
+    push si
+    add si, 28              ; Brincamos 28 bytes hacia adelante
+    mov cx, [si]            ; Traemos el saldo a CX
+    pop si
+    
+    ;verificar que el monto sea positivo
+    cmp ax, 0
+    jle monto_no_valido
+    
+    ;verificar que el monto sea menor al saldo actual
+    cmp ax,cx
+    jg monto_insuficiente
+    
+    ;Localizar el campo saldo de la cuenta
+    push si
+    add si, MAX_NUMERO + MAX_NOMBRE   ; SI apunta al campo saldo
+    mov cx, [si]                      ; BX = saldo actual
+    
+    
+    ; Restar el monto del saldo actual
+    sub cx, ax
+    mov [si], cx                       ; Guardar nuevo saldo
+    pop si
+    
+    ; Mostrar mensaje de Exito
+    mov ah, 09h
+    lea dx, msg_retiro_exitoso
+    int 21h
+    
+    ; Mostrar el nuevo saldo
+    mov ah, 09h
+    lea dx, msg_saldo_actual
+    int 21h
+    
+    mov ax, cx
+    call mostrar_numero  
+    
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+
+    call esperar_tecla
+    jmp fin_retirar
+
+    
+monto_no_valido:
+    mov ah, 09h
+    lea dx, msg_monto_invalido
+    int 21h
+    call esperar_tecla 
+    ;ret
+    jmp fin_retirar
+           
+monto_insuficiente:
+    mov ah, 09h
+    lea dx, msg_monto_insuficiente
+    int 21h
+    call esperar_tecla
+    
+    
+fin_retirar:
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+    
+
+opcion_retirar endp
+
+
+;================================================
+;Funcion: Consultar saldo
+;================================================
+
 opcion_consultar proc
      ; 1. Pedir numero de cuenta 
     mov ah, 09h
@@ -778,7 +937,13 @@ realizar_consulta:
     call esperar_tecla
     ret
 opcion_consultar endp
+                      
+                      
 
+;================================================
+;Funcion: Desactivar cuenta
+;================================================                      
+                      
 opcion_desactivar proc
     ; 1. Pedir numero de cuenta
     mov ah, 09h
@@ -879,7 +1044,14 @@ error_ya_inactiva:
     int 21h
     call esperar_tecla
     ret
-opcion_desactivar endp
+opcion_desactivar endp  
+
+
+
+;================================================
+;Funcion: Reporte
+;================================================
+
 
 opcion_reporte proc
     ; 1. Revisar si hay cuentas creadas
@@ -989,12 +1161,5 @@ imprimir_reporte:
     ret
 opcion_reporte endp
 
-opcion_retirar proc
-    ;en desarrollo.
-    mov ah, 09h
-    lea dx, mensaje_crear_cuenta
-    int 21h
-    call esperar_tecla
-    ret
 
 END Main
