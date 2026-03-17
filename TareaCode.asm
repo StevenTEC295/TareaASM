@@ -21,13 +21,13 @@
     num_cuentas dw 0
     
     ;buffers para cuentas 
-    buffer_numero DB 10
-                  DB ?
-                  DB 10 DUP(?)
-    
-    buffer_nombre DB 30
-                  DB ?
-                  DB 30 DUP(?)
+buffer_numero DB max_numero     ; = 8  ? max 7 chars + null fits in field
+              DB ?
+              DB max_numero DUP(?)
+
+buffer_nombre DB max_nombre     ; = 20 ? max 19 chars + null fits in field
+              DB ?
+              DB max_nombre DUP(?)
     
     buffer_saldo  DB 5
                   DB ?
@@ -231,9 +231,15 @@ copiar_numero PROC
     PUSH SI
     PUSH DI
     
+    ; Guardar DI original en la pila
+    PUSH DI
+    
     LEA SI, buffer_numero+2
     MOV CL, buffer_numero+1
     XOR CH, CH
+    
+    CMP CX, 0
+    JE copiar_num_fin
     
 copiar_num:
     MOV AL, [SI]
@@ -242,7 +248,11 @@ copiar_num:
     INC DI
     LOOP copiar_num
     
+copiar_num_fin:
     MOV BYTE PTR [DI], 0
+    
+    ; Restaurar DI original
+    POP DI
     
     POP DI
     POP SI
@@ -250,7 +260,6 @@ copiar_num:
     POP AX
     RET
 copiar_numero ENDP
-
 
 ; Funcion: Validar si el numero de cuenta ya existe
 
@@ -269,36 +278,41 @@ validar_cuenta_existe PROC
     ; Preparar busqueda
     LEA SI, cuentas_array     ; SI apunta al inicio del array
     MOV CX, num_cuentas       ; CX = numero de cuentas a revisar
-    XOR BX, BX                ; BX = contador/offset
     
 buscar_cuenta:
     PUSH CX
     PUSH SI
     
     ; Comparar numero actual con el buscado
-    LEA DI, buffer_numero+2    ; DI apunta al nï¿½mero ingresado
-    MOV CX, MAX_NUMERO-1       ; Longitud maxima sin terminador
+    LEA DI, buffer_numero+2    ; DI apunta al numero ingresado
     
 comparar_numeros:
     MOV AL, [SI]               ; Caracter del array
     MOV BL, [DI]               ; Caracter del buffer
+    
+    ; Verificar si el caracter del buffer es Enter (0Dh)
     CMP BL, 0Dh
     JE  buffer_terminado
+    
+    ; Comparar caracteres
     CMP AL, BL
     JNE siguiente_cuenta        ; Si son diferentes, siguiente cuenta
     
-    CMP AL, 0                   ; Llegamos al terminador?
-    JE numeros_iguales          ; Si ambos son 0, son iguales
+    ; Si ambos son 0 (fin de cadena), son iguales
+    CMP AL, 0
+    JE numeros_iguales
     
+    ; Avanzar al siguiente caracter
     INC SI
     INC DI
-    LOOP comparar_numeros
+    JMP comparar_numeros
     
-    ; Si llegamos aqui, revisar el ultimo caracter
-    MOV AL, [SI]
-    MOV BL, [DI]
-    CMP AL, BL
-    JNE siguiente_cuenta
+buffer_terminado:
+    ; El usuario presiono Enter - considerar como fin de cadena
+    ; Verificar que en el array tambien sea fin de cadena
+    CMP AL, 0
+    JNE siguiente_cuenta        ; Si el array no ha terminado, no son iguales
+    JE numeros_iguales          ; Si ambos terminaron, son iguales
     
 numeros_iguales:
     ; Los numeros son iguales - la cuenta ya existe
@@ -331,11 +345,6 @@ fin_validacion:
     RET                     
 validar_cuenta_existe ENDP  
 
-buffer_terminado:
-    ; El usuario presiono Enter - considerar como fin de cadena
-    MOV BYTE PTR [DI], 0        ; Poner terminador explicitamente
-    ; Continuar comparacion con el nuevo terminador
-    JMP comparar_numeros
 
 ;Funcion: Depositar dinero
 
@@ -480,11 +489,15 @@ buscar_localizar:
     
     ; Comparar numeros
     LEA DI, buffer_numero+2
-    MOV CX, MAX_NUMERO-1
     
 comparar_localizar:
     MOV AL, [SI]
     MOV BL, [DI]
+    
+    ; Verificar si el buffer tiene Enter
+    CMP BL, 0Dh
+    JE buffer_terminado_localizar
+    
     CMP AL, BL
     JNE siguiente_localizar
     
@@ -493,15 +506,12 @@ comparar_localizar:
     
     INC SI
     INC DI
-    LOOP comparar_localizar
+    JMP comparar_localizar
     
-    ; Verificar ultimo caracter
-    MOV AL, [SI]
-    MOV BL, [DI]
-    CMP AL, BL
-    JNE siguiente_localizar
+buffer_terminado_localizar:
     CMP AL, 0
     JNE siguiente_localizar
+    JE encontrado_localizar
     
 encontrado_localizar:
     POP SI           ; Recuperamos SI original (direccion de la cuenta)
@@ -610,7 +620,6 @@ mostrar_numero ENDP
 
 
 ; Funcion: Crear cuenta con validacion
-
 crear_cuenta proc   
     ; Verificar espacio
     MOV AX, num_cuentas
@@ -639,13 +648,11 @@ verificar_duplicado:
     
     ; Validar si el numero ya existe
     CALL validar_cuenta_existe
-    JZ cuenta_duplicada          ; Si ZF = 1, la cuenta ya existe
+    JZ cuenta_duplicada
     
-    ; Si llegamos aqui, el nï¿½mero es vï¿½lido (no existe)
     JMP continuar_creacion
     
 cuenta_duplicada:
-    ; La cuenta ya existe - mostrar error y salir
     mov ah, 09h
     lea dx, msg_cuenta_existe
     int 21h
@@ -659,13 +666,18 @@ continuar_creacion:
     LEA DI, cuentas_array
     ADD DI, AX
     
-    ; Copiar numero (ya validado)
-    CALL copiar_numero      ; Copia a DI
+    ; Guardar DI original
+    PUSH DI
     
-    ; Avanzar al nombre
+    ; Copiar numero
+    CALL copiar_numero      ; Copia el número pero DI se restaura
+    
+    ; Avanzar al nombre (usando DI original + MAX_NUMERO)
+    POP DI
     ADD DI, MAX_NUMERO
+    PUSH DI                 ; Guardar posición del nombre
     
-    ; Pedir nombre
+    ; Pedir y copiar nombre
     MOV AH, 09h
     LEA DX, msg_pedir_nombre
     INT 21h
@@ -678,21 +690,20 @@ continuar_creacion:
     mov ah, 09h
     int 21h  
     
-    CALL copiar_nombre      ; Copia a DI
+    CALL copiar_nombre      ; Copia el nombre pero DI se restaura
     
-    ; Avanzar al saldo
-    ADD DI, MAX_NOMBRE
+    ; Calcular posición del saldo
+    POP DI                  ; Recuperar posición del nombre
+    ADD DI, MAX_NOMBRE      ; Avanzar al saldo
     
-    ; 3. GUARDAR SALDO = 0 (SIEMPRE)
-    MOV WORD PTR [DI], 0     ; Saldo inicial en 0
+    ; Guardar saldo = 0
+    MOV WORD PTR [DI], 0
     
-    ; Avanzar al campo estado
-    ADD DI, 2                ; +2 por el saldo word
-    
-    ; 4. GUARDAR ESTADO = ACTIVA (SIEMPRE)
+    ; Calcular posición del estado
+    ADD DI, 2               ; Avanzar al estado
     MOV BYTE PTR [DI], ESTADO_ACTIVA
     
-    ; Incrementar contador de cuentas
+    ; Incrementar contador
     INC num_cuentas
     
     ; Mostrar mensaje de exito
@@ -702,17 +713,24 @@ continuar_creacion:
     
     call esperar_tecla
     RET
-crear_cuenta endp 
+crear_cuenta endp
 
+    
 copiar_nombre PROC
     PUSH AX
     PUSH CX
     PUSH SI
     PUSH DI
     
+    ; Guardar DI original en la pila
+    PUSH DI
+    
     LEA SI, buffer_nombre+2
     MOV CL, buffer_nombre+1
     XOR CH, CH
+    
+    CMP CX, 0
+    JE copiar_nom_fin
     
 copiar_nom:
     MOV AL, [SI]
@@ -721,7 +739,11 @@ copiar_nom:
     INC DI
     LOOP copiar_nom
     
+copiar_nom_fin:
     MOV BYTE PTR [DI], 0
+    
+    ; Restaurar DI original
+    POP DI
     
     POP DI
     POP SI
