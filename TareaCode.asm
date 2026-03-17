@@ -3,45 +3,45 @@
 
 .DATA    
 
-    ;Definir estructuras
-    max_cuentas     equ 10
-    max_numero      equ 8
-    max_nombre      equ 20
-    size_estado     equ 1
-    registro_size equ (max_numero+max_nombre+2+size_estado)
-                         
-    ;Constantes de estado_cuenta                        
+    ; =============================================
+    ; Constantes de estructura
+    ; =============================================
+    max_cuentas   equ 10
+    max_numero    equ 8
+    max_nombre    equ 20
+    size_estado   equ 1
+    registro_size equ 31        ; max_numero + max_nombre + 2 (saldo) + size_estado
+
     estado_activa   equ 1
     estado_inactiva equ 0       
-    
-    ;array donde se almacenaran cuentas
-    cuentas_array db max_cuentas*registro_size dup(0)
-    
-    ;variable para contador de cuentas
-    num_cuentas dw 0
-    
-    ;buffers para cuentas 
-buffer_numero DB max_numero     ; = 8  ? max 7 chars + null fits in field
-              DB ?
-              DB max_numero DUP(?)
 
-buffer_nombre DB max_nombre     ; = 20 ? max 19 chars + null fits in field
-              DB ?
-              DB max_nombre DUP(?)
-    
+    ; =============================================
+    ; Almacenamiento de cuentas
+    ; =============================================
+    cuentas_array   db max_cuentas * registro_size dup(0)
+    num_cuentas     dw 0
+    offset_registro dw 0        ; Variable auxiliar para calcular posicion del registro
+
+    ; =============================================
+    ; Buffers de entrada
+    ; =============================================
+    buffer_numero DB max_numero
+                  DB ?
+                  DB max_numero DUP(?)
+
+    buffer_nombre DB max_nombre
+                  DB ?
+                  DB max_nombre DUP(?)
+
     buffer_saldo  DB 5
                   DB ?
                   DB 5 DUP(?)
-                  
-    ; Mensajes para crear cuenta
-    msg_pedir_numero DB 13,10,'Ingrese numero de cuenta: $'
-    msg_pedir_nombre DB 'Ingrese nombre del titular: $'              
-    
-    msg_cuenta_creada DB 13,10,'*** CUENTA CREADA EXITOSAMENTE ***',13,10,'$'
-    msg_error_limite  DB 13,10,'ERROR: Limite de cuentas alcanzado!',13,10,'$'
-    msg_no_cuentas    DB 13,10,'No hay cuentas registradas.',13,10,'$'
-    
-    buffer db 3, ?, 3 dup('$')      ; Buffer pequeno para 1 caracter + Enter
+
+    buffer        DB 3, ?, 3 dup('$')
+
+    ; =============================================
+    ; Menu principal
+    ; =============================================
     menu DB '=====================================', 13, 10
          DB '           MENU PRINCIPAL', 13, 10
          DB '=====================================', 13, 10
@@ -53,49 +53,62 @@ buffer_nombre DB max_nombre     ; = 20 ? max 19 chars + null fits in field
          DB '6. Desactivar cuenta', 13, 10
          DB '7. Salir', 13, 10
          DB '=====================================', 13, 10
-         DB 'Seleccione una opcion: $'   
-    opcion db 0                         ; Solo un byte (0-255)
-    mensaje_error db 13,10,'Error: Debe ingresar un numero del 1 al 7$' 
-    mensaje_crear_cuenta db 13, 10, 'Crear cuenta, en desarrollo...'
-    msg_cuenta_existe DB 13,10,'ERROR: El numero de cuenta ya existe!',13,10,'$'               
-    salto_linea db 13,10,'$' 
-    
-        
-    msg_pedir_monto      DB 13,10,'Ingrese monto a depositar: $'
-    msg_cuenta_inactiva  DB 13,10,'ERROR: La cuenta esta INACTIVA. No se puede depositar.',13,10,'$'
-    msg_cuenta_no_existe DB 13,10,'ERROR: La cuenta no existe.',13,10,'$'
-    msg_monto_invalido   DB 13,10,'ERROR: Monto invalido. Debe ser mayor a 0.',13,10,'$'
-    msg_deposito_exitoso DB 13,10,'*** DEPOSITO EXITOSO ***',13,10,'$'
-    msg_saldo_actual     DB 'Nuevo saldo: $'
-    msg_submenu_estado  db 13,10,'1. Activar',13,10,'2. Desactivar',13,10,'Seleccione opcion: $'
-    msg_activada_ok     db 13,10,'*** CUENTA ACTIVADA EXITOSAMENTE ***',13,10,'$'
-    msg_ya_activa       db 13,10,'ERROR: La cuenta ya se encuentra activa.',13,10,'$'
-    ; Mensajes para consultar saldo, retirar dinero, reporte general y desactivar cuenta.
-    msg_desactivada_ok  db 13,10,'*** CUENTA DESACTIVADA EXITOSAMENTE ***',13,10,'$'
-    msg_ya_inactiva     db 13,10,'ERROR: La cuenta ya se encuentra inactiva.',13,10,'$'
-    msg_nombre_titular  db 13,10,'Titular: $'
-    ; Textos msg para el reporte
-    msg_rep_titulo      db 13,10,'======= REPORTE GENERAL =======',13,10,'$'
-    msg_rep_activas     db 'Cuentas Activas: $'
-    msg_rep_inactivas   db 13,10,'Cuentas Inactivas: $'
-    msg_rep_saldo_tot   db 13,10,'Saldo Total del Banco: $'
-    msg_rep_saldo_max   db 13,10,'Mayor Saldo Registrado: $'
-    msg_rep_saldo_min   db 13,10,'Menor Saldo Registrado: $'
-    msg_rep_pie         db 13,10,'===============================',13,10,'$'
+         DB 'Seleccione una opcion: $'
 
-    ; Variables matematicas para el reporte genral
-    rep_activas         dw 0
-    rep_inactivas       dw 0
-    rep_saldo_total     dw 0
-    rep_saldo_max       dw 0
-    rep_saldo_min       dw 0FFFFh  ; Inicia en el maximo posible para poder encontrar el menor
+    opcion db 0
 
+    ; =============================================
+    ; Mensajes generales
+    ; =============================================
+    salto_linea          db 13,10,'$'
+    mensaje_error        db 13,10,'Error: Debe ingresar un numero del 1 al 7$'
+    msg_pedir_numero     db 13,10,'Ingrese numero de cuenta: $'
+    msg_pedir_nombre     db 'Ingrese nombre del titular: $'
+    msg_cuenta_creada    db 13,10,'*** CUENTA CREADA EXITOSAMENTE ***',13,10,'$'
+    msg_error_limite     db 13,10,'ERROR: Limite de cuentas alcanzado!',13,10,'$'
+    msg_no_cuentas       db 13,10,'No hay cuentas registradas.',13,10,'$'
+    msg_cuenta_existe    db 13,10,'ERROR: El numero de cuenta ya existe!',13,10,'$'
+    msg_cuenta_no_existe db 13,10,'ERROR: La cuenta no existe.',13,10,'$'
+    msg_cuenta_inactiva  db 13,10,'ERROR: La cuenta esta INACTIVA.',13,10,'$'
+    msg_monto_invalido   db 13,10,'ERROR: Monto invalido. Debe ser mayor a 0.',13,10,'$'
+    msg_pedir_monto      db 13,10,'Ingrese monto: $'
+    msg_deposito_exitoso db 13,10,'*** DEPOSITO EXITOSO ***',13,10,'$'
+    msg_retiro_exitoso   db 13,10,'*** RETIRO EXITOSO ***',13,10,'$'
+    msg_fondos_insuf     db 13,10,'ERROR: Fondos insuficientes.',13,10,'$'
+    msg_saldo_actual     db 'Saldo actual: $'
+    msg_submenu_estado   db 13,10,'1. Activar',13,10,'2. Desactivar',13,10,'Seleccione opcion: $'
+    msg_activada_ok      db 13,10,'*** CUENTA ACTIVADA EXITOSAMENTE ***',13,10,'$'
+    msg_desactivada_ok   db 13,10,'*** CUENTA DESACTIVADA EXITOSAMENTE ***',13,10,'$'
+    msg_ya_activa        db 13,10,'ERROR: La cuenta ya se encuentra activa.',13,10,'$'
+    msg_ya_inactiva      db 13,10,'ERROR: La cuenta ya se encuentra inactiva.',13,10,'$'
 
+    ; =============================================
+    ; Mensajes de reporte
+    ; =============================================
+    msg_rep_titulo   db 13,10,'======= REPORTE GENERAL =======',13,10,'$'
+    msg_rep_activas  db 'Cuentas Activas: $'
+    msg_rep_inactivas db 13,10,'Cuentas Inactivas: $'
+    msg_rep_saldo_tot db 13,10,'Saldo Total del Banco: $'
+    msg_rep_saldo_max db 13,10,'Mayor Saldo Registrado: $'
+    msg_rep_saldo_min db 13,10,'Menor Saldo Registrado: $'
+    msg_rep_pie       db 13,10,'===============================',13,10,'$'
+
+    ; =============================================
+    ; Variables para reporte
+    ; =============================================
+    rep_activas    dw 0
+    rep_inactivas  dw 0
+    rep_saldo_total dw 0
+    rep_saldo_max  dw 0
+    rep_saldo_min  dw 0FFFFh
 
 
 .CODE                                                                             
 
 
+; =============================================
+; Programa principal
+; =============================================
 Main proc
     mov ax, @DATA
     mov ds, ax
@@ -104,81 +117,72 @@ principal_loop:
     call mostrar_menu  
     call obtener_opcion
     jc mostrar_error_menu
-    call switch ;Escoger opcion
-    
-    ; Despues de cada operacion, volver al menu
+    call switch
     jmp principal_loop
     
 mostrar_error_menu:
     lea dx, mensaje_error
     mov ah, 09h
     int 21h
-    
     lea dx, salto_linea
     mov ah, 09h
     int 21h
-    
-    ; Esperar una tecla antes de continuar
     mov ah, 08h
     int 21h
-    
     jmp principal_loop
     
 main endp
 
+
+; =============================================
+; Mostrar menu y leer opcion
+; =============================================
 mostrar_menu proc
     lea dx, menu
     mov ah, 09h
     int 21h
-    
     lea dx, buffer
     mov ah, 0Ah
     int 21h
-    
     lea dx, salto_linea
     mov ah, 09h
     int 21h  
-    
     ret
 mostrar_menu endp
 
+
+; =============================================
+; Validar y guardar opcion del menu
+; Salida: CF=0 exito, CF=1 error
+; =============================================
 obtener_opcion proc       
     push ax
     push bx
     push cx
     push dx
     
-    ; Verificar que no esta vacio
-    mov cl, buffer[1]        ; Longitud de la entrada
+    mov cl, buffer[1]
     cmp cl, 0
     je error_opcion
     
-    ; Obtener el primer caracter
-    mov al, buffer[2]        ; Primer caracter ingresado
-    
-    ; Validar que sea digito
+    mov al, buffer[2]
     cmp al, '0'
     jb error_opcion
     cmp al, '9'
     ja error_opcion
     
-    ; Convertir de ASCII a numero
     sub al, '0'
-    
-    ; Validar que esta entre 1 y 7
     cmp al, 1
-    jb error_opcion          ; Menor que 1
+    jb error_opcion
     cmp al, 7
-    ja error_opcion          ; Mayor que 7
+    ja error_opcion
     
-    ; Guardar la opcion
     mov opcion, al
-    
-    clc                      ; exito
+    clc
     jmp fin_opcion
     
 error_opcion:
-    stc                      ; Error
+    stc
     
 fin_opcion:
     pop dx
@@ -188,6 +192,10 @@ fin_opcion:
     ret
 obtener_opcion endp       
 
+
+; =============================================
+; Despachar segun opcion seleccionada
+; =============================================
 switch proc 
     cmp opcion, 1
     je crear_cuenta
@@ -203,7 +211,6 @@ switch proc
     je opcion_desactivar
     cmp opcion, 7
     je salir_programa
-    
     ret
     
 salir_programa:
@@ -213,26 +220,26 @@ salir_programa:
 switch endp
 
 
-; Funcion para esperar una tecla
-
+; =============================================
+; Esperar una tecla antes de continuar
+; =============================================
 esperar_tecla proc
     push ax
-    
     mov ah, 08h
     int 21h
-    
     pop ax
     ret
 esperar_tecla endp
 
+
+; =============================================
+; Copiar buffer_numero en [DI]
+; Entrada: DI = destino en cuentas_array
+; =============================================
 copiar_numero PROC
     PUSH AX
     PUSH CX
     PUSH SI
-    PUSH DI
-    
-    ; Guardar DI original en la pila
-    PUSH DI
     
     LEA SI, buffer_numero+2
     MOV CL, buffer_numero+1
@@ -251,18 +258,50 @@ copiar_num:
 copiar_num_fin:
     MOV BYTE PTR [DI], 0
     
-    ; Restaurar DI original
-    POP DI
-    
-    POP DI
     POP SI
     POP CX
     POP AX
     RET
 copiar_numero ENDP
 
-; Funcion: Validar si el numero de cuenta ya existe
 
+; =============================================
+; Copiar buffer_nombre en [DI]
+; Entrada: DI = destino en cuentas_array
+; =============================================
+copiar_nombre PROC
+    PUSH AX
+    PUSH CX
+    PUSH SI
+    
+    LEA SI, buffer_nombre+2
+    MOV CL, buffer_nombre+1
+    XOR CH, CH
+    
+    CMP CX, 0
+    JE copiar_nom_fin
+    
+copiar_nom:
+    MOV AL, [SI]
+    MOV [DI], AL
+    INC SI
+    INC DI
+    LOOP copiar_nom
+    
+copiar_nom_fin:
+    MOV BYTE PTR [DI], 0
+    
+    POP SI
+    POP CX
+    POP AX
+    RET
+copiar_nombre ENDP
+
+
+; =============================================
+; Validar si numero de cuenta ya existe
+; Salida: ZF=1 existe, ZF=0 no existe
+; =============================================
 validar_cuenta_existe PROC
     PUSH AX
     PUSH BX
@@ -271,69 +310,50 @@ validar_cuenta_existe PROC
     PUSH SI
     PUSH DI
     
-    ; Si no hay cuentas, no puede existir
     CMP num_cuentas, 0
     JE no_existe
     
-    ; Preparar busqueda
-    LEA SI, cuentas_array     ; SI apunta al inicio del array
-    MOV CX, num_cuentas       ; CX = numero de cuentas a revisar
+    LEA SI, cuentas_array
+    MOV CX, num_cuentas
     
 buscar_cuenta:
     PUSH CX
     PUSH SI
-    
-    ; Comparar numero actual con el buscado
-    LEA DI, buffer_numero+2    ; DI apunta al numero ingresado
+    LEA DI, buffer_numero+2
     
 comparar_numeros:
-    MOV AL, [SI]               ; Caracter del array
-    MOV BL, [DI]               ; Caracter del buffer
-    
-    ; Verificar si el caracter del buffer es Enter (0Dh)
+    MOV AL, [SI]
+    MOV BL, [DI]
     CMP BL, 0Dh
     JE  buffer_terminado
-    
-    ; Comparar caracteres
     CMP AL, BL
-    JNE siguiente_cuenta        ; Si son diferentes, siguiente cuenta
-    
-    ; Si ambos son 0 (fin de cadena), son iguales
+    JNE siguiente_cuenta
     CMP AL, 0
     JE numeros_iguales
-    
-    ; Avanzar al siguiente caracter
     INC SI
     INC DI
     JMP comparar_numeros
     
 buffer_terminado:
-    ; El usuario presiono Enter - considerar como fin de cadena
-    ; Verificar que en el array tambien sea fin de cadena
     CMP AL, 0
-    JNE siguiente_cuenta        ; Si el array no ha terminado, no son iguales
-    JE numeros_iguales          ; Si ambos terminaron, son iguales
+    JNE siguiente_cuenta
+    JE numeros_iguales
     
 numeros_iguales:
-    ; Los numeros son iguales - la cuenta ya existe
     POP SI
     POP CX
-    
-    ; Configurar ZF = 1 (existe)
-    CMP AX, AX                   ; Esto pone ZF = 1
+    CMP AX, AX          ; ZF = 1 (existe)
     JMP fin_validacion
     
 siguiente_cuenta:
     POP SI
     POP CX
-    ADD SI, REGISTRO_SIZE        ; Avanzar a la siguiente cuenta
+    ADD SI, REGISTRO_SIZE
     LOOP buscar_cuenta
     
 no_existe:
-    ; La cuenta no existe
-    ; Configurar ZF = 0 (no existe)
     XOR AX, AX
-    CMP AX, 1                    ; Esto pone ZF = 0
+    CMP AX, 1           ; ZF = 0 (no existe)
     
 fin_validacion:
     POP DI
@@ -346,133 +366,11 @@ fin_validacion:
 validar_cuenta_existe ENDP  
 
 
-;Funcion: Depositar dinero
-
-depositar proc
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-    
-verificar_existe:
-    ; Pedir numero primero para validar
-    MOV AH, 09h
-    LEA DX, msg_pedir_numero
-    INT 21h
-    
-    lea dx, buffer_numero
-    mov ah, 0Ah
-    int 21h
-    
-    lea dx, salto_linea
-    mov ah, 09h
-    int 21h
-              
-    ; Validar si el numero ya existe
-    CALL validar_cuenta_existe
-    JZ cuenta_encontrada
-    JMP cuenta_no_existe
-    
-cuenta_encontrada:
-    ; La cuenta existe - ahora hay que localizarla en el array
-    CALL localizar_cuenta_por_numero   ; Devuelve SI = direccion de la cuenta
-    
-    ; Verificar que la cuenta esta ACTIVA
-    PUSH SI
-    ADD SI, MAX_NUMERO + MAX_NOMBRE + 2   ; SI apunta al campo estado
-    MOV AL, [SI]
-    POP SI
-    CMP AL, ESTADO_ACTIVA
-    JE cuenta_activa
-    
-    ; Si la cuenta estï¿½ INACTIVA
-    MOV AH, 09h
-    LEA DX, msg_cuenta_inactiva
-    INT 21h
-    call esperar_tecla
-    JMP fin_depositar
-    
-cuenta_activa:
-    ; Pedir cantidad a depositar
-    MOV AH, 09h
-    LEA DX, msg_pedir_monto
-    INT 21h
-    
-    lea dx, buffer_saldo
-    mov ah, 0Ah
-    int 21h
-    
-    lea dx, salto_linea
-    mov ah, 09h
-    int 21h
-    
-    ; Convertir el monto ingresado a numero (AX)
-    CALL convertir_monto
-    
-    ; Verificar que el monto sea positivo
-    CMP AX, 0
-    JLE monto_invalido
-    
-    ; Localizar el campo saldo de la cuenta
-    PUSH SI
-    ADD SI, MAX_NUMERO + MAX_NOMBRE   ; SI apunta al campo saldo
-    MOV BX, [SI]                      ; BX = saldo actual
-    
-    ; Sumar el monto al saldo actual
-    ADD BX, AX
-    MOV [SI], BX                       ; Guardar nuevo saldo
-    POP SI
-    
-    ; Mostrar mensaje de Exito
-    MOV AH, 09h
-    LEA DX, msg_deposito_exitoso
-    INT 21h
-    
-    ; Mostrar el nuevo saldo
-    MOV AH, 09h
-    LEA DX, msg_saldo_actual
-    INT 21h
-    
-    MOV AX, BX
-    CALL mostrar_numero 
-    
-    lea dx, salto_linea
-    mov ah, 09h
-    int 21h
-
-    call esperar_tecla
-    JMP fin_depositar
-    
-cuenta_no_existe:
-    MOV AH, 09h
-    LEA DX, msg_cuenta_no_existe
-    INT 21h
-    call esperar_tecla
-    JMP fin_depositar
-    
-monto_invalido:
-    MOV AH, 09h
-    LEA DX, msg_monto_invalido
-    INT 21h
-    call esperar_tecla
-    
-fin_depositar:
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-depositar endp
-
-
-; Funcion: Localizar cuenta por numero
-; ENTRADA: buffer_numero con el numero buscado
-; SALIDA:  SI = direccion de la cuenta en cuentas_array
-
+; =============================================
+; Localizar cuenta por numero
+; Entrada: buffer_numero con numero buscado
+; Salida:  SI = direccion de la cuenta
+; =============================================
 localizar_cuenta_por_numero PROC
     push ax
     push bx
@@ -486,24 +384,17 @@ localizar_cuenta_por_numero PROC
 buscar_localizar:
     PUSH CX
     PUSH SI
-    
-    ; Comparar numeros
     LEA DI, buffer_numero+2
     
 comparar_localizar:
     MOV AL, [SI]
     MOV BL, [DI]
-    
-    ; Verificar si el buffer tiene Enter
     CMP BL, 0Dh
     JE buffer_terminado_localizar
-    
     CMP AL, BL
     JNE siguiente_localizar
-    
     CMP AL, 0
     JE encontrado_localizar
-    
     INC SI
     INC DI
     JMP comparar_localizar
@@ -514,7 +405,7 @@ buffer_terminado_localizar:
     JE encontrado_localizar
     
 encontrado_localizar:
-    POP SI           ; Recuperamos SI original (direccion de la cuenta)
+    POP SI
     POP CX
     JMP fin_localizar
     
@@ -523,8 +414,6 @@ siguiente_localizar:
     POP CX
     ADD SI, REGISTRO_SIZE
     LOOP buscar_localizar
-    
-    ; Si no encuentra (no deberia pasar porque ya validamos)
     XOR SI, SI
     
 fin_localizar:
@@ -537,10 +426,10 @@ fin_localizar:
 localizar_cuenta_por_numero ENDP
 
 
-; Funcion: Convertir monto ingresado a numero
-; ENTRADA: buffer_saldo con el monto
-; SALIDA:  AX = numero convertido
-
+; =============================================
+; Convertir buffer_saldo a numero
+; Salida: AX = numero convertido
+; =============================================
 convertir_monto PROC
     push bx
     push cx
@@ -552,7 +441,6 @@ convertir_monto PROC
     XOR BX, BX
     MOV CL, buffer_saldo+1
     XOR CH, CH
-    
     CMP CX, 0
     JE fin_conversion
     
@@ -562,7 +450,6 @@ convertir_monto_loop:
     JB fin_conversion
     CMP BL, '9'
     JA fin_conversion
-    
     SUB BL, '0'
     MOV DX, 10
     MUL DX
@@ -579,8 +466,9 @@ fin_conversion:
 convertir_monto ENDP
 
 
-; Funcion: Mostrar numero en AX
-
+; =============================================
+; Mostrar numero en AX por pantalla
+; =============================================
 mostrar_numero PROC
     push ax
     push bx
@@ -611,17 +499,12 @@ mostrar_digitos_loop:
     pop ax
     RET
 mostrar_numero ENDP
-     
-    
 
 
-
-
-
-
-; Funcion: Crear cuenta con validacion
+; =============================================
+; Opcion 1: Crear cuenta
+; =============================================
 crear_cuenta proc   
-    ; Verificar espacio
     MOV AX, num_cuentas
     CMP AX, MAX_CUENTAS
     JL verificar_duplicado
@@ -633,23 +516,18 @@ crear_cuenta proc
     RET
     
 verificar_duplicado:
-    ; Pedir numero primero para validar
     MOV AH, 09h
     LEA DX, msg_pedir_numero
     INT 21h
-    
     lea dx, buffer_numero
     mov ah, 0Ah
     int 21h
-    
     lea dx, salto_linea
     mov ah, 09h
     int 21h
     
-    ; Validar si el numero ya existe
     CALL validar_cuenta_existe
     JZ cuenta_duplicada
-    
     JMP continuar_creacion
     
 cuenta_duplicada:
@@ -660,166 +538,321 @@ cuenta_duplicada:
     RET
     
 continuar_creacion:
-    ; Calcular posicion
-    MOV AX, REGISTRO_SIZE
-    MUL num_cuentas
-    LEA DI, cuentas_array
-    ADD DI, AX
-    
-    ; Guardar DI original
-    PUSH DI
-    
+    ; Calcular offset del nuevo registro UNA sola vez
+    MOV BX, num_cuentas
+    MOV AX, registro_size
+    MUL BX
+    MOV offset_registro, AX
+
     ; Copiar numero
-    CALL copiar_numero      ; Copia el número pero DI se restaura
-    
-    ; Avanzar al nombre (usando DI original + MAX_NUMERO)
-    POP DI
-    ADD DI, MAX_NUMERO
-    PUSH DI                 ; Guardar posición del nombre
-    
+    LEA DI, cuentas_array
+    ADD DI, offset_registro
+    CALL copiar_numero
+
     ; Pedir y copiar nombre
     MOV AH, 09h
     LEA DX, msg_pedir_nombre
     INT 21h
-    
     lea dx, buffer_nombre
     mov ah, 0Ah
     int 21h
-    
     lea dx, salto_linea
     mov ah, 09h
-    int 21h  
-    
-    CALL copiar_nombre      ; Copia el nombre pero DI se restaura
-    
-    ; Calcular posición del saldo
-    POP DI                  ; Recuperar posición del nombre
-    ADD DI, MAX_NOMBRE      ; Avanzar al saldo
-    
-    ; Guardar saldo = 0
+    int 21h
+
+    LEA DI, cuentas_array
+    ADD DI, offset_registro
+    ADD DI, MAX_NUMERO
+    CALL copiar_nombre
+
+    ; Guardar saldo = 0 y estado = activa
+    LEA DI, cuentas_array
+    ADD DI, offset_registro
+    ADD DI, MAX_NUMERO + MAX_NOMBRE
     MOV WORD PTR [DI], 0
-    
-    ; Calcular posición del estado
-    ADD DI, 2               ; Avanzar al estado
+    ADD DI, 2
     MOV BYTE PTR [DI], ESTADO_ACTIVA
-    
-    ; Incrementar contador
+
     INC num_cuentas
-    
-    ; Mostrar mensaje de exito
+
     MOV AH, 09h
     LEA DX, msg_cuenta_creada
     INT 21h
-    
     call esperar_tecla
     RET
 crear_cuenta endp
 
-    
-copiar_nombre PROC
-    PUSH AX
-    PUSH CX
-    PUSH SI
-    PUSH DI
-    
-    ; Guardar DI original en la pila
-    PUSH DI
-    
-    LEA SI, buffer_nombre+2
-    MOV CL, buffer_nombre+1
-    XOR CH, CH
-    
-    CMP CX, 0
-    JE copiar_nom_fin
-    
-copiar_nom:
-    MOV AL, [SI]
-    MOV [DI], AL
-    INC SI
-    INC DI
-    LOOP copiar_nom
-    
-copiar_nom_fin:
-    MOV BYTE PTR [DI], 0
-    
-    ; Restaurar DI original
-    POP DI
-    
-    POP DI
-    POP SI
-    POP CX
-    POP AX
-    RET
-copiar_nombre ENDP
 
-opcion_consultar proc
-     ; 1. Pedir numero de cuenta 
-    mov ah, 09h
-    lea dx, msg_pedir_numero
-    int 21h
-
+; =============================================
+; Opcion 2: Depositar dinero
+; =============================================
+depositar proc
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    
+    MOV AH, 09h
+    LEA DX, msg_pedir_numero
+    INT 21h
     lea dx, buffer_numero
     mov ah, 0Ah
     int 21h
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+              
+    CALL validar_cuenta_existe
+    JZ cuenta_encontrada_dep
+    
+    MOV AH, 09h
+    LEA DX, msg_cuenta_no_existe
+    INT 21h
+    call esperar_tecla
+    JMP fin_depositar
+    
+cuenta_encontrada_dep:
+    CALL localizar_cuenta_por_numero
+    
+    PUSH SI
+    ADD SI, MAX_NUMERO + MAX_NOMBRE + 2
+    MOV AL, [SI]
+    POP SI
+    CMP AL, ESTADO_ACTIVA
+    JE dep_cuenta_activa
+    
+    MOV AH, 09h
+    LEA DX, msg_cuenta_inactiva
+    INT 21h
+    call esperar_tecla
+    JMP fin_depositar
+    
+dep_cuenta_activa:
+    MOV AH, 09h
+    LEA DX, msg_pedir_monto
+    INT 21h
+    lea dx, buffer_saldo
+    mov ah, 0Ah
+    int 21h
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+    
+    CALL convertir_monto
+    CMP AX, 0
+    JLE dep_monto_invalido
+    
+    PUSH SI
+    ADD SI, MAX_NUMERO + MAX_NOMBRE
+    MOV BX, [SI]
+    ADD BX, AX
+    MOV [SI], BX
+    POP SI
+    
+    MOV AH, 09h
+    LEA DX, msg_deposito_exitoso
+    INT 21h
+    MOV AH, 09h
+    LEA DX, msg_saldo_actual
+    INT 21h
+    MOV AX, BX
+    CALL mostrar_numero
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+    call esperar_tecla
+    JMP fin_depositar
+    
+dep_monto_invalido:
+    MOV AH, 09h
+    LEA DX, msg_monto_invalido
+    INT 21h
+    call esperar_tecla
+    
+fin_depositar:
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+depositar endp
 
+
+; =============================================
+; Opcion 3: Retirar dinero
+; =============================================
+opcion_retirar proc
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+
+    MOV AH, 09h
+    LEA DX, msg_pedir_numero
+    INT 21h
+    lea dx, buffer_numero
+    mov ah, 0Ah
+    int 21h
     lea dx, salto_linea
     mov ah, 09h
     int 21h
 
-    ; 2. Validar si existe 
+    CALL validar_cuenta_existe
+    JZ ret_cuenta_encontrada
+
+    MOV AH, 09h
+    LEA DX, msg_cuenta_no_existe
+    INT 21h
+    call esperar_tecla
+    JMP fin_retirar
+
+ret_cuenta_encontrada:
+    CALL localizar_cuenta_por_numero
+
+    PUSH SI
+    ADD SI, MAX_NUMERO + MAX_NOMBRE + 2
+    MOV AL, [SI]
+    POP SI
+    CMP AL, ESTADO_ACTIVA
+    JE ret_cuenta_activa
+
+    MOV AH, 09h
+    LEA DX, msg_cuenta_inactiva
+    INT 21h
+    call esperar_tecla
+    JMP fin_retirar
+
+ret_cuenta_activa:
+    MOV AH, 09h
+    LEA DX, msg_pedir_monto
+    INT 21h
+    lea dx, buffer_saldo
+    mov ah, 0Ah
+    int 21h
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+
+    CALL convertir_monto
+    CMP AX, 0
+    JLE ret_monto_invalido
+
+    PUSH SI
+    ADD SI, MAX_NUMERO + MAX_NOMBRE
+    MOV BX, [SI]        ; BX = saldo actual
+    CMP BX, AX
+    JGE ret_hay_fondos
+
+    POP SI
+    MOV AH, 09h
+    LEA DX, msg_fondos_insuf
+    INT 21h
+    call esperar_tecla
+    JMP fin_retirar
+
+ret_hay_fondos:
+    SUB BX, AX
+    MOV [SI], BX
+    POP SI
+
+    MOV AH, 09h
+    LEA DX, msg_retiro_exitoso
+    INT 21h
+    MOV AH, 09h
+    LEA DX, msg_saldo_actual
+    INT 21h
+    MOV AX, BX
+    CALL mostrar_numero
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+    call esperar_tecla
+    JMP fin_retirar
+
+ret_monto_invalido:
+    MOV AH, 09h
+    LEA DX, msg_monto_invalido
+    INT 21h
+    call esperar_tecla
+
+fin_retirar:
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+opcion_retirar endp
+
+
+; =============================================
+; Opcion 4: Consultar saldo
+; =============================================
+opcion_consultar proc
+    mov ah, 09h
+    lea dx, msg_pedir_numero
+    int 21h
+    lea dx, buffer_numero
+    mov ah, 0Ah
+    int 21h
+    lea dx, salto_linea
+    mov ah, 09h
+    int 21h
+
     call validar_cuenta_existe
-    jz realizar_consulta      ; Si ZF=1, la cuenta existe, saltamos a consultar
+    jz realizar_consulta
     
-    ; Si no existe, imprimimos error y salimos
     mov ah, 09h
     lea dx, msg_cuenta_no_existe
     int 21h
     call esperar_tecla
     ret
+
 realizar_consulta:
-    ; 3. Obtener el puntero a la cuenta (SI)    
     call localizar_cuenta_por_numero
 
-    ; 4. Imprimir Titulo de Saldo
     mov ah, 09h
     lea dx, msg_saldo_actual
     int 21h
 
-    ; 5. Leer el Saldo (Esta en el byte 28)
     push si
-    add si, 28              ; Brincamos 28 bytes hacia adelante
-    mov ax, [si]            ; Traemos el saldo a AX
+    add si, MAX_NUMERO + MAX_NOMBRE
+    mov ax, [si]
     pop si
     
-    call mostrar_numero     ;imprimir 
-
+    call mostrar_numero
     lea dx, salto_linea
     mov ah, 09h
     int 21h
-
     call esperar_tecla
     ret
 opcion_consultar endp
 
+
+; =============================================
+; Opcion 6: Activar / Desactivar cuenta
+; =============================================
 opcion_desactivar proc
-    ; 1. Pedir numero de cuenta
     mov ah, 09h
     lea dx, msg_pedir_numero
     int 21h
-
     lea dx, buffer_numero
     mov ah, 0Ah
     int 21h
-
     lea dx, salto_linea
     mov ah, 09h
     int 21h
 
-    ; 2. Validar existencia
     call validar_cuenta_existe
     jz mostrar_submenu_estado
     
-    ; Si no existe
     mov ah, 09h
     lea dx, msg_cuenta_no_existe
     int 21h
@@ -827,39 +860,30 @@ opcion_desactivar proc
     ret
 
 mostrar_submenu_estado:
-    ; 3. Obtener el puntero a la cuenta (SI)
     call localizar_cuenta_por_numero
-    
-    ; GUARDAMOS "SI" porque leer el teclado va a ensuciar los registros
-    push si 
+    push si
 
-    ; 4. Mostrar submenu
     mov ah, 09h
     lea dx, msg_submenu_estado
     int 21h
 
-    ; 5. Leer UNA sola tecla (opcion 1 o 2)
     mov ah, 01h
     int 21h
-    mov bl, al          ; Guardamos lo que el usuario digitÃ³ en BL
+    mov bl, al
 
-    ; Imprimir salto de linea para que se vea ordenado
     mov ah, 09h
     lea dx, salto_linea
     int 21h
 
-    ; RECUPERAMOS "SI" y leemos el estado actual de la cuenta
-    pop si 
-    add si, 30          ; Brincamos al byte del Estado
-    mov al, [si]        ; AL tiene el estado actual (1 = Activa, 0 = Inactiva)
+    pop si
+    add si, MAX_NUMERO + MAX_NOMBRE + 2
+    mov al, [si]
 
-    ; 6. Redirigir segÃºn lo que eligiÃ³ el usuario
     cmp bl, '1'
     je hacer_activacion
     cmp bl, '2'
     je hacer_desactivacion
     
-    ; Si digitÃ³ otra cosa (ej. un 5 o una letra)
     lea dx, mensaje_error
     mov ah, 09h
     int 21h
@@ -867,10 +891,9 @@ mostrar_submenu_estado:
     ret
 
 hacer_activacion:
-    cmp al, 1           ; Verificamos si YA estÃ¡ activa
+    cmp al, 1
     je error_ya_activa
-    mov byte ptr [si], 1 ; Le ponemos un 1 (Activa)
-    
+    mov byte ptr [si], 1
     mov ah, 09h
     lea dx, msg_activada_ok
     int 21h
@@ -878,10 +901,9 @@ hacer_activacion:
     ret
 
 hacer_desactivacion:
-    cmp al, 0           ; Verificamos si YA estÃ¡ inactiva
+    cmp al, 0
     je error_ya_inactiva
-    mov byte ptr [si], 0 ; Le ponemos un 0 (Inactiva)
-    
+    mov byte ptr [si], 0
     mov ah, 09h
     lea dx, msg_desactivada_ok
     int 21h
@@ -903,10 +925,13 @@ error_ya_inactiva:
     ret
 opcion_desactivar endp
 
+
+; =============================================
+; Opcion 5: Reporte general
+; =============================================
 opcion_reporte proc
-    ; 1. Revisar si hay cuentas creadas
     cmp num_cuentas, 0
-    ja iniciar_reporte      ; Si hay mÃ¡s de 0, iniciamos
+    ja iniciar_reporte
     
     mov ah, 09h
     lea dx, msg_no_cuentas
@@ -915,94 +940,85 @@ opcion_reporte proc
     ret
 
 iniciar_reporte:
-    ; Limpiamos contadores a 0 (por si se pide el reporte 2 veces seguidas)
     mov rep_activas, 0
     mov rep_inactivas, 0
     mov rep_saldo_total, 0
     mov rep_saldo_max, 0
-    mov rep_saldo_min, 0FFFFh ; Maximo posible
+    mov rep_saldo_min, 0FFFFh
 
-    lea si, cuentas_array   ; SI apunta al inicio de toda la base de datos
-    mov cx, num_cuentas     ; CX es nuestro contador para el LOOP
+    lea si, cuentas_array
+    mov cx, num_cuentas
 
 ciclo_reporte:
-    ; A. REVISAR ESTADO (Byte 30)
     push si
-    add si, 30
+
+    ; Revisar estado
+    add si, MAX_NUMERO + MAX_NOMBRE + 2
     mov al, [si]
     pop si
 
     cmp al, 1
     je es_activa
-    inc rep_inactivas       ; Si no es 1, sumamos inactiva
+    inc rep_inactivas
     jmp revisar_saldo
 es_activa:
     inc rep_activas
 
 revisar_saldo:
-    ; B. REVISAR SALDOS (Byte 28)
     push si
-    add si, 28
-    mov ax, [si]            ; AX tiene el saldo de esta cuenta
+    add si, MAX_NUMERO + MAX_NOMBRE
+    mov ax, [si]
     pop si
 
-    add rep_saldo_total, ax ; Acumulamos el saldo total
+    add rep_saldo_total, ax
 
-    ; Evaluar Maximo
     cmp ax, rep_saldo_max
-    jbe evaluar_minimo      ; Si es menor o igual, ignoramos
-    mov rep_saldo_max, ax   ; Â¡Nuevo campeon maximo!
+    jbe evaluar_minimo
+    mov rep_saldo_max, ax
 
 evaluar_minimo:
     cmp ax, rep_saldo_min
-    jae siguiente_cuenta_rep; Si es mayor o igual, ignoramos
-    mov rep_saldo_min, ax   ; Â¡Nuevo campeon minimo!
+    jae siguiente_cuenta_rep
+    mov rep_saldo_min, ax
 
 siguiente_cuenta_rep:
-    add si, 31              ; Brincamos a la siguiente cuenta (31 bytes)
+    add si, REGISTRO_SIZE
     loop ciclo_reporte
 
-imprimir_reporte:
-    ; Imprimimos Titulo
+    ; Imprimir reporte
     mov ah, 09h
     lea dx, msg_rep_titulo
     int 21h
 
-    ; Imprimir Activas
     lea dx, msg_rep_activas
     int 21h
     mov ax, rep_activas
     call mostrar_numero
 
-    ; Imprimir Inactivas
     mov ah, 09h
     lea dx, msg_rep_inactivas
     int 21h
     mov ax, rep_inactivas
     call mostrar_numero
 
-    ; Imprimir Saldo Total
     mov ah, 09h
     lea dx, msg_rep_saldo_tot
     int 21h
     mov ax, rep_saldo_total
     call mostrar_numero
 
-    ; Imprimir Maximo
     mov ah, 09h
     lea dx, msg_rep_saldo_max
     int 21h
     mov ax, rep_saldo_max
     call mostrar_numero
 
-    ; Imprimir Minimo
     mov ah, 09h
     lea dx, msg_rep_saldo_min
     int 21h
     mov ax, rep_saldo_min
     call mostrar_numero
 
-    ; Pie de Reporte
     mov ah, 09h
     lea dx, msg_rep_pie
     int 21h
@@ -1010,13 +1026,5 @@ imprimir_reporte:
     call esperar_tecla
     ret
 opcion_reporte endp
-
-opcion_retirar proc
-    ;en desarrollo.
-    mov ah, 09h
-    lea dx, mensaje_crear_cuenta
-    int 21h
-    call esperar_tecla
-    ret
 
 END Main
