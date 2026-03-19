@@ -56,6 +56,7 @@
          DB 'Seleccione una opcion: $'
 
     opcion db 0
+    letras db 0
 
     ; =============================================
     ; Mensajes generales
@@ -70,6 +71,7 @@
     msg_cuenta_existe    db 13,10,'ERROR: El numero de cuenta ya existe!',13,10,'$'
     msg_cuenta_no_existe db 13,10,'ERROR: La cuenta no existe.',13,10,'$'
     msg_cuenta_inactiva  db 13,10,'ERROR: La cuenta esta INACTIVA.',13,10,'$'
+    msg_no_numero db 13,10,'ERROR: Numero de cuenta no permite letras!',13,10,'$'
     msg_monto_invalido   db 13,10,'ERROR: Monto invalido. Debe ser mayor a 0.',13,10,'$'
     msg_pedir_monto      db 13,10,'Ingrese monto: $'
     msg_deposito_exitoso db 13,10,'*** DEPOSITO EXITOSO ***',13,10,'$'
@@ -363,7 +365,64 @@ fin_validacion:
     POP BX
     POP AX
     RET                     
-validar_cuenta_existe ENDP  
+validar_cuenta_existe ENDP
+
+
+; =============================================
+; Validar si numero de cuenta tiene letras
+; Salida: CF=1 Posee letras, CF=0 No posee letras
+; =============================================
+validar_numero_cuenta proc       
+    push ax
+    push bx
+    push cx
+    push dx
+    
+
+buscar_letras:
+        
+    mov cl, buffer_numero[1]
+    cmp cl, 0
+    je error_string
+    
+    
+    mov al, buffer_numero[bx+2]
+    cmp al, '0'
+    jb error_string
+    cmp al, '9'
+    ja error_string
+     
+    sub al, '0'
+    cmp al, 0
+    jb error_string
+    cmp al, 9
+    ja error_string
+    
+    inc bx
+    
+    cmp al, 0
+    mov letras, al
+    clc 
+    
+    cmp bl,cl     
+    jl buscar_letras
+    
+    clc
+    
+    jmp fin_verificacion
+
+    
+error_string:
+    stc 
+    
+fin_verificacion:
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+    
+validar_numero_cuenta endp    
 
 
 ; =============================================
@@ -528,6 +587,10 @@ verificar_duplicado:
     
     CALL validar_cuenta_existe
     JZ cuenta_duplicada
+    
+    CALL validar_numero_cuenta
+    JC no_es_numero
+    
     JMP continuar_creacion
     
 cuenta_duplicada:
@@ -535,8 +598,16 @@ cuenta_duplicada:
     lea dx, msg_cuenta_existe
     int 21h
     call esperar_tecla
-    RET
+    RET 
     
+
+no_es_numero:
+    mov ah, 09h
+    lea dx, msg_no_numero
+    int 21h
+    call esperar_tecla
+    RET
+        
 continuar_creacion:
     ; Calcular offset del nuevo registro UNA sola vez
     MOV BX, num_cuentas
