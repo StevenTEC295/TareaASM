@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual de Usuario - BankTec</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', 'Segoe UI', sans-serif; }
+        .terminal {
+            background-color: #1e1e1e;
+            color: #4af626;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+        .terminal-header {
+            background-color: #333;
+            color: #ccc;
+            padding: 0.25rem 1rem;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+            font-family: sans-serif;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+        }
+        .terminal-dots span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .dot-red { background-color: #ff5f56; }
+        .dot-yellow { background-color: #ffbd2e; }
+        .dot-green { background-color: #27c93f; }
+        
+        .step-card {
+            transition: transform 0.2s;
+        }
+        .step-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-blue-200 selection:text-blue-900">
+
+    <div class="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header -->
+        <header class="text-center border-b border-slate-200 pb-8 mb-8">
+            <div class="inline-flex items-center justify-center p-3 bg-blue-600 rounded-xl mb-4 shadow-lg">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg>
+            </div>
+            <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">Manual de Usuario: BankTec</h1>
+            <p class="mt-3 text-lg text-slate-600">Sistema de Gestión Bancaria en Ensamblador 8086</p>
+            <div class="mt-4 flex justify-center gap-4 text-sm font-medium text-slate-500">
+                <span class="bg-slate-100 px-3 py-1 rounded-full">CE1106 - Paradigmas de Programación</span>
+                <span class="bg-slate-100 px-3 py-1 rounded-full">Tarea 1</span>
+            </div>
+        </header>
+
+        <!-- 1. Introducción y Requisitos -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-slate-900 mb-4 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                1. Introducción y Entorno
+            </h2>
+            <p class="text-slate-600 mb-4 leading-relaxed">
+                <strong>BankTec</strong> es una aplicación de consola desarrollada estrictamente en lenguaje ensamblador (ASM8086) que permite administrar una cartera de hasta 10 cuentas bancarias. Soporta operaciones transaccionales completas en memoria (creación, depósitos, retiros y reportes).
+            </p>
+            
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-md mt-4">
+                <h3 class="font-bold text-blue-900">Requisitos para Ejecución</h3>
+                <ul class="list-disc ml-5 mt-2 text-blue-800 text-sm space-y-1">
+                    <li>Emulador compatible con arquitectura x86 de 16-bits (recomendado: <strong>DOSBox</strong> o <strong>Emu8086</strong>).</li>
+                    <li>Ensamblador MASM o TASM para compilar el código fuente (<code>.asm</code>) si se desea recompilar.</li>
+                    <li>Teclado estándar para el ingreso de cadenas numéricas y de texto.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 2. Interfaz Principal -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-slate-900 mb-4 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                2. Interfaz Principal
+            </h2>
+            <p class="text-slate-600 mb-4">
+                Al iniciar el programa <code>banktec.exe</code>, se presentará el Menú Principal. Para interactuar, simplemente escriba el número de la opción deseada (del 1 al 7) y presione <code>Enter</code>.
+            </p>
+
+            <!-- Terminal Mockup -->
+            <div class="rounded-lg shadow-xl overflow-hidden mb-6">
+                <div class="terminal-header">
+                    <div class="terminal-dots flex">
+                        <span class="dot-red"></span>
+                        <span class="dot-yellow"></span>
+                        <span class="dot-green"></span>
+                    </div>
+                    <span class="ml-4 font-mono">C:\DOSBox> banktec.exe</span>
+                </div>
+                <div class="terminal">=====================================
+            MENU PRINCIPAL
+=====================================
+1. Crear cuenta
+2. Depositar dinero
+3. Retirar dinero
+4. Consultar saldo
+5. Mostrar reporte general
+6. Desactivar cuenta
+7. Salir
+=====================================
+Seleccione una opcion: <span class="animate-pulse">_</span></div>
+            </div>
+        </section>
+
+        <!-- 3. Guía de Opciones -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-slate-900 mb-6 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                3. Guía de Operaciones
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Opcion 1 -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 step-card">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-lg text-slate-800">1. Crear Cuenta</h3>
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">Opción 1</span>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-3">Registra un nuevo usuario en el sistema bancario. Se solicitará:</p>
+                    <ul class="text-sm text-slate-600 list-disc ml-4 space-y-1">
+                        <li><strong>Número de cuenta:</strong> Máximo 8 caracteres. No debe contener letras. No puede repetirse.</li>
+                        <li><strong>Nombre del titular:</strong> Máximo 20 caracteres.</li>
+                    </ul>
+                    <div class="mt-3 text-xs text-emerald-600 bg-emerald-50 p-2 rounded border border-emerald-100">
+                        * Toda cuenta nueva inicia con saldo 0 y estado Activo. Límite del sistema: 10 cuentas.
+                    </div>
+                </div>
+
+                <!-- Opcion 2 y 3 -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 step-card">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-lg text-slate-800">2 y 3. Depositar / Retirar</h3>
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">Opciones 2, 3</span>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-3">Permite modificar el saldo de una cuenta existente. El flujo es:</p>
+                    <ol class="text-sm text-slate-600 list-decimal ml-4 space-y-1">
+                        <li>Ingresar el número de cuenta válido.</li>
+                        <li>Ingresar el monto a operar (número entero positivo).</li>
+                    </ol>
+                    <div class="mt-3 text-xs text-rose-600 bg-rose-50 p-2 rounded border border-rose-100">
+                        * Fallará si la cuenta está <strong>Inactiva</strong> o si intenta retirar más dinero del saldo disponible.
+                    </div>
+                </div>
+
+                <!-- Opcion 4 -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 step-card">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-lg text-slate-800">4. Consultar Saldo</h3>
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">Opción 4</span>
+                    </div>
+                    <p class="text-sm text-slate-600">
+                        Muestra el dinero disponible en una cuenta específica. Solo requiere digitar el número de cuenta. Ideal para verificar el éxito de transacciones previas.
+                    </p>
+                </div>
+
+                <!-- Opcion 6 -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 step-card">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-lg text-slate-800">6. Desactivar / Activar Cuenta</h3>
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">Opción 6</span>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-2">
+                        Cambia el estado operativo de la cuenta. Al seleccionar esta opción e ingresar una cuenta válida, se desplegará un submenú:
+                    </p>
+                    <ul class="text-sm text-slate-600 list-disc ml-4">
+                        <li><strong>1:</strong> Activar</li>
+                        <li><strong>2:</strong> Desactivar</li>
+                    </ul>
+                </div>
+
+                <!-- Opcion 5 -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 step-card md:col-span-2">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-lg text-slate-800">5. Mostrar Reporte General</h3>
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">Opción 5</span>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-3">
+                        Opción administrativa que recorre toda la memoria del programa y genera un resumen estadístico del banco:
+                    </p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center mt-4">
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <span class="block text-xl font-bold text-slate-800">#</span>
+                            <span class="text-xs text-slate-500 uppercase">Ctas Activas</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <span class="block text-xl font-bold text-slate-800">#</span>
+                            <span class="text-xs text-slate-500 uppercase">Ctas Inactivas</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <span class="block text-xl font-bold text-emerald-600">$$$</span>
+                            <span class="text-xs text-slate-500 uppercase">Saldo Total</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <span class="block text-xl font-bold text-blue-600">Max/Min</span>
+                            <span class="text-xs text-slate-500 uppercase">Saldos Registrados</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 4. Mensajes del Sistema y Errores -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold text-slate-900 mb-4 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                4. Manejo de Errores
+            </h2>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Mensaje en Consola</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Motivo / Solución</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-200 text-sm">
+                        <tr>
+                            <td class="px-6 py-4 font-mono text-red-600">Debe ingresar un numero del 1 al 7</td>
+                            <td class="px-6 py-4 text-slate-600">Ingresó una letra o un número fuera de rango en el menú principal.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-mono text-red-600">Limite de cuentas alcanzado!</td>
+                            <td class="px-6 py-4 text-slate-600">El sistema tiene un máximo de 10 cuentas. No se pueden crear más.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-mono text-red-600">Numero de cuenta no permite letras!</td>
+                            <td class="px-6 py-4 text-slate-600">Intentó crear una cuenta escribiendo caracteres alfabéticos. Use solo números.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-mono text-red-600">La cuenta esta INACTIVA.</td>
+                            <td class="px-6 py-4 text-slate-600">No puede realizar depósitos ni retiros. Vaya a la Opción 6 para activarla.</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-mono text-red-600">Fondos insuficientes.</td>
+                            <td class="px-6 py-4 text-slate-600">El monto a retirar es mayor al saldo actual de la cuenta.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-6 text-sm text-slate-500 text-center">
+                <p>Nota: Siempre que aparezca un mensaje del sistema, deberá presionar cualquier tecla para regresar al Menú Principal.</p>
+            </div>
+        </section>
+        
+        <footer class="text-center text-slate-400 text-sm mt-12 pt-8 border-t border-slate-200">
+            <p>Creado para la Tarea 1 (BankTec) - Paradigmas de la Programación (2026)</p>
+        </footer>
+
+    </div>
+</body>
+</html>
